@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultra-Low Latency TTS Microservice - Interactive Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .card { background-color: #1e293b; border: 1px solid #334155; }
+    .input-field { background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; }
+    .input-field:focus { border-color: #38bdf8; outline: none; }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+
+  <div class="max-w-3xl w-full card rounded-xl p-6 md:p-8 shadow-2xl space-y-6">
+    <div class="border-b border-slate-700 pb-4">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-sky-400">🎙️ Ultra-Low Latency TTS Studio</h1>
+        <span id="health-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-900 text-emerald-300 border border-emerald-700">Checking...</span>
+      </div>
+      <p class="text-sm text-slate-400 mt-1">Prueba en tiempo real del microservicio TTS con soporte de streaming instantáneo y autenticación PocketBase.</p>
+    </div>
+
+    <!-- Auth Config -->
+    <div class="space-y-2">
+      <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Token de Autenticación PocketBase</label>
+      <input type="password" id="pb-token" placeholder="Bearer eyJhbGciOi..." class="w-full p-3 rounded-lg input-field text-sm font-mono">
+      <p class="text-xs text-slate-400">Introduce un token válido de PocketBase para autorizar las solicitudes.</p>
+    </div>
+
+    <!-- TTS Form -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="space-y-1">
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voz</label>
+        <select id="voice-select" class="w-full p-2.5 rounded-lg input-field text-sm">
+          <option value="es_MX-ald-medium">es_MX-ald-medium (Rápida - México)</option>
+          <option value="es_MX-claude-high">es_MX-claude-high (Alta fidelidad - México)</option>
+          <option value="es_ES-davefx-medium">es_ES-davefx-medium (España)</option>
+        </select>
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Velocidad (<span id="speed-val">1.0</span>x)</label>
+        <input type="range" id="speed-range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer mt-3">
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Formato</label>
+        <select id="format-select" class="w-full p-2.5 rounded-lg input-field text-sm">
+          <option value="mp3">MP3 (Streaming Progresivo)</option>
+          <option value="wav">WAV (Audio Sin Compresión)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Text Area -->
+    <div class="space-y-2">
+      <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Texto a sintetizar</label>
+      <textarea id="tts-text" rows="4" class="w-full p-3 rounded-lg input-field text-sm" placeholder="Escribe el texto que deseas sintetizar...">Hola, este es un texto de prueba para síntesis de voz en tiempo real con ultra baja latencia. Puedes escribir párrafos más largos y la voz comenzará a reproducirse de inmediato gracias a la segmentación por frases en streaming.</textarea>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap gap-4 items-center">
+      <button id="btn-stream" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 shadow-lg flex items-center justify-center space-x-2">
+        <span>▶️ Reproducir en Streaming</span>
+      </button>
+      <button id="btn-download" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center space-x-2">
+        <span>⬇️ Descargar Audio</span>
+      </button>
+    </div>
+
+    <!-- Metrics and Status -->
+    <div id="status-card" class="bg-slate-900/60 p-4 rounded-lg border border-slate-800 space-y-3">
+      <div class="flex justify-between items-center text-xs text-slate-400">
+        <span>Estado: <strong id="status-text" class="text-slate-200">Listo</strong></span>
+        <span>TTFA (Primer Audio): <strong id="metric-ttfa" class="text-sky-400">-- ms</strong></span>
+        <span>Chunks recibidos: <strong id="metric-chunks" class="text-emerald-400">0</strong></span>
+      </div>
+      <audio id="audio-player" controls class="w-full mt-2 hidden"></audio>
+    </div>
+
+    <div id="error-box" class="hidden bg-rose-950/80 border border-rose-700 text-rose-200 p-3 rounded-lg text-sm"></div>
+  </div>
+
+  <script>
+    const btnStream = document.getElementById('btn-stream');
+    const btnDownload = document.getElementById('btn-download');
+    const statusText = document.getElementById('status-text');
+    const metricTtfa = document.getElementById('metric-ttfa');
+    const metricChunks = document.getElementById('metric-chunks');
+    const audioPlayer = document.getElementById('audio-player');
+    const errorBox = document.getElementById('error-box');
+    const speedRange = document.getElementById('speed-range');
+    const speedVal = document.getElementById('speed-val');
+
+    speedRange.addEventListener('input', () => {
+      speedVal.textContent = speedRange.value;
+    });
+
+    // Check backend health status
+    async function checkHealth() {
+      try {
+        const res = await fetch('/health');
+        if (res.ok) {
+          const badge = document.getElementById('health-badge');
+          badge.textContent = 'API Conectada';
+        }
+      } catch (e) {
+        const badge = document.getElementById('health-badge');
+        badge.textContent = 'API Desconectada';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-rose-900 text-rose-300 border border-rose-700';
+      }
+    }
+    checkHealth();
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.classList.remove('hidden');
+    }
+
+    function clearError() {
+      errorBox.textContent = '';
+      errorBox.classList.add('hidden');
+    }
+
+    // Stream playback implementation
+    btnStream.addEventListener('click', async () => {
+      clearError();
+      const token = document.getElementById('pb-token').value.trim();
+      const text = document.getElementById('tts-text').value.trim();
+      const voice = document.getElementById('voice-select').value;
+      const speed = parseFloat(speedRange.value);
+      const format = document.getElementById('format-select').value;
+
+      if (!text) return showError('Por favor ingresa un texto a sintetizar.');
+
+      btnStream.disabled = true;
+      statusText.textContent = 'Solicitando stream...';
+      metricTtfa.textContent = '-- ms';
+      metricChunks.textContent = '0';
+      
+      const startTime = performance.now();
+      let chunkCount = 0;
+      let firstChunkTime = null;
+
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+
+        const res = await fetch('/v1/tts/stream', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ text, voice, speed, format })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(errData.error || `Error HTTP ${res.status}`);
+        }
+
+        statusText.textContent = 'Recibiendo stream de audio...';
+        const reader = res.body.getReader();
+        const chunks = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunkCount++;
+          if (!firstChunkTime) {
+            firstChunkTime = performance.now();
+            const ttfa = Math.round(firstChunkTime - startTime);
+            metricTtfa.textContent = `${ttfa} ms`;
+          }
+
+          metricChunks.textContent = chunkCount;
+          chunks.push(value);
+        }
+
+        statusText.textContent = 'Procesamiento completado. Reproduciendo audio...';
+        const blob = new Blob(chunks, { type: format === 'wav' ? 'audio/wav' : 'audio/mpeg' });
+        audioPlayer.src = URL.createObjectURL(blob);
+        audioPlayer.classList.remove('hidden');
+        audioPlayer.play();
+
+      } catch (err) {
+        showError(err.message);
+        statusText.textContent = 'Error';
+      } finally {
+        btnStream.disabled = false;
+      }
+    });
+
+    // Download audio implementation
+    btnDownload.addEventListener('click', async () => {
+      clearError();
+      const token = document.getElementById('pb-token').value.trim();
+      const text = document.getElementById('tts-text').value.trim();
+      const voice = document.getElementById('voice-select').value;
+      const speed = parseFloat(speedRange.value);
+      const format = document.getElementById('format-select').value;
+
+      if (!text) return showError('Por favor ingresa un texto a sintetizar.');
+
+      btnDownload.disabled = true;
+      statusText.textContent = 'Sintetizando archivo completo...';
+
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+
+        const res = await fetch('/v1/tts/synthesize', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ text, voice, speed, format })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(errData.error || `Error HTTP ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audio.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        statusText.textContent = 'Archivo descargado con éxito.';
+      } catch (err) {
+        showError(err.message);
+        statusText.textContent = 'Error al descargar';
+      } finally {
+        btnDownload.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

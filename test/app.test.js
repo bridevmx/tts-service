@@ -8,11 +8,27 @@ import ttsRoutes from '../src/routes/tts.routes.js';
 function createTestApp() {
   const app = express();
   app.use(express.json());
+  app.use(express.static('public'));
   app.use(healthRoutes);
   app.use('/v1', voicesRoutes);
   app.use('/v1/tts', ttsRoutes);
   return app;
 }
+
+test('GET / serves index.html UI', async () => {
+  const app = createTestApp();
+  const server = app.listen(0);
+  const port = server.address().port;
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.ok(text.includes('Ultra-Low Latency TTS Studio'));
+  } finally {
+    server.close();
+  }
+});
 
 test('GET /health returns healthy status', async () => {
   const app = createTestApp();

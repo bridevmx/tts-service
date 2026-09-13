@@ -121,6 +121,17 @@
     const speedVal = document.getElementById('speed-val');
     const debugConsole = document.getElementById('debug-console');
     const btnClearLogs = document.getElementById('btn-clear-logs');
+    const pbTokenInput = document.getElementById('pb-token');
+
+    // Restore token from localStorage on load
+    const savedToken = localStorage.getItem('pb_token');
+    if (savedToken) {
+      pbTokenInput.value = savedToken;
+    }
+
+    pbTokenInput.addEventListener('input', () => {
+      localStorage.setItem('pb_token', pbTokenInput.value.trim());
+    });
 
     speedRange.addEventListener('input', () => {
       speedVal.textContent = speedRange.value;

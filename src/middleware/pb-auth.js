@@ -3,14 +3,16 @@ import { config } from '../config.js';
 export async function requirePocketbaseAuth(req, res, next) {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.warn('[PB Auth Debug] Rejected request: Missing or invalid Authorization header.');
+  if (!authHeader) {
+    console.warn('[PB Auth Debug] Rejected request: Missing Authorization header.');
     return res.status(401).json({
       error: 'Cabecera de autenticación requerida. Formato: Bearer <token>'
     });
   }
 
-  const token = authHeader.split(' ')[1]?.trim();
+  const token = authHeader.startsWith('Bearer ')
+    ? authHeader.substring(7).trim()
+    : authHeader.trim();
 
   if (!token) {
     console.warn('[PB Auth Debug] Rejected request: Empty Bearer token.');

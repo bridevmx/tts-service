@@ -6,6 +6,8 @@ import tempfile
 import urllib.request
 from flask import Flask, request, Response, jsonify
 
+import shutil
+
 app = Flask(__name__)
 
 CACHE_DIR = os.getenv("PIPER_CACHE_DIR", "/data")
@@ -79,8 +81,9 @@ def synthesize_speech():
 
     try:
         length_scale = str(max(0.5, min(2.0, 1.0 / speed))) if speed > 0 else "1.0"
+        piper_exe = shutil.which("piper") or os.path.join(os.path.dirname(sys.executable), "piper") or "piper"
         cmd = [
-            sys.executable, "-m", "piper",
+            piper_exe,
             "--model", onnx_path,
             "--output_file", wav_path,
             "--length_scale", length_scale

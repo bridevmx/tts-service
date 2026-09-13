@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # 1. API Gateway Node.js (Ultra-low latency Express TTS API)
+  tts-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tts_api_gateway
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - POCKETBASE_URL=${POCKETBASE_URL:-https://pb.tudominio.com}
+      - POCKETBASE_COLLECTION=${POCKETBASE_COLLECTION:-users}
+      - PIPER_URL=${PIPER_URL:-http://piper-engine:5000/v1/audio/speech}
+      - DEFAULT_VOICE=${DEFAULT_VOICE:-es_MX-ald-medium}
+    depends_on:
+      - piper-engine
+    ports:
+      - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # 2. Standalone Piper TTS Engine (Optional multi-container setup)
+  piper-engine:
+    image: kamilkrawiec/piper-openai-tts:latest
+    container_name: tts_piper_engine
+    restart: unless-stopped
+    environment:
+      - PORT=5000
+    volumes:
+      - piper_cache:/data
+    # Strict resource limits for shared VPS host (e.g. Oracle Cloud VPS)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+volumes:
+  piper_cache:
+    name: coolify_piper_tts_cache

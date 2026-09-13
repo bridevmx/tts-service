@@ -1,13 +1,19 @@
 # Production Dockerfile for Coolify and Easypanel 1-Click Git Deployment
 FROM node:20-bookworm-slim
 
-# Install Python3, pip, ffmpeg and system dependencies
+# Install Python3, pip, ffmpeg and essential C++ runtime libraries (libgomp1, libsndfile1, espeak-ng)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
     ffmpeg \
     curl \
+    ca-certificates \
+    procps \
+    libgomp1 \
+    libsndfile1 \
+    espeak-ng \
+    espeak-ng-data \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -42,5 +48,9 @@ ENV PIPER_CACHE_DIR=/data
 VOLUME ["/data"]
 
 EXPOSE 3000
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://127.0.0.1:${PORT:-3000}/health || exit 1
 
 CMD ["/app/start.sh"]

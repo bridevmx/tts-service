@@ -43,6 +43,10 @@ def ensure_voice_downloaded(voice_id):
 
     return onnx_path
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "healthy", "service": "piper-engine"}), 200
+
 @app.route("/v1/audio/speech", methods=["POST"])
 def synthesize_speech():
     data = request.get_json(force=True, silent=True) or {}

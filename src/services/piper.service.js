@@ -43,9 +43,12 @@ export async function synthesizeSentence({ text, voice = config.defaultVoice, sp
   } catch (err) {
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
       console.error(`[Piper Service Debug] Timeout (30s) waiting for Piper engine at ${config.piperUrl}`);
-      throw new Error(`Timeout waiting for Piper engine at ${config.piperUrl}`);
+      throw new Error(`Tiempo de espera agotado (30s) en el motor Piper (${config.piperUrl})`);
     }
-    console.error(`[Piper Service Debug] Synthesis error:`, err.message);
-    throw err;
+
+    const causeCode = err.cause?.code || err.cause?.message || err.code || '';
+    const detailMsg = causeCode ? ` (${causeCode})` : '';
+    console.error(`[Piper Service Debug] Synthesis error calling ${config.piperUrl}: ${err.message}${detailMsg}`, err.cause || '');
+    throw new Error(`No se pudo conectar al motor Piper en ${config.piperUrl}${detailMsg}. El servicio Python se está iniciando o falló al arrancar.`);
   }
 }

@@ -21,6 +21,7 @@ WORKDIR /app
 # Create python virtual environment for Piper TTS
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 
 # Install Piper TTS engine and Flask server dependencies
 RUN pip install --no-cache-dir piper-tts flask

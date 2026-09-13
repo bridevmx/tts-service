@@ -1,0 +1,14 @@
+# nixpacks.toml - Configuration for Easypanel Nixpacks Builder Engine
+
+[phases.setup]
+nixPkgs = ["nodejs-20_x", "python311", "python311Packages.pip", "ffmpeg", "libgomp", "libsndfile", "espeak-ng"]
+
+[phases.install]
+cmds = [
+  "npm ci --only=production",
+  "python3 -m venv /opt/venv",
+  "/opt/venv/bin/pip install --no-cache-dir piper-tts flask"
+]
+
+[start]
+cmd = "sh ./start.sh"

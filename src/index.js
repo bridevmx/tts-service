@@ -55,7 +55,22 @@ function ensurePiperServerRunning() {
 
   checkReq.on('error', () => {
     console.log('[TTS API Gateway] Starting internal Piper TTS Python server on 127.0.0.1:5000...');
-    const pythonBin = fs.existsSync('/opt/venv/bin/python3') ? '/opt/venv/bin/python3' : 'python3';
+    
+    const candidates = [
+      '/opt/venv/bin/python3',
+      '/usr/bin/python3',
+      '/usr/local/bin/python3',
+      'python3',
+      'python'
+    ];
+    let pythonBin = 'python3';
+    for (const cand of candidates) {
+      if (cand.startsWith('/') && fs.existsSync(cand)) {
+        pythonBin = cand;
+        break;
+      }
+    }
+
     const pyProcess = spawn(pythonBin, ['piper-server/server.py'], {
       env: {
         ...process.env,

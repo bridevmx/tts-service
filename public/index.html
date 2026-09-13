@@ -267,6 +267,13 @@
           chunks.push(value);
         }
 
+        if (chunks.length === 0) {
+          throw {
+            message: 'Se recibieron 0 fragmentos de audio del servidor.',
+            hint: 'El servidor de síntesis no pudo generar ningún bloque de audio. Revisa los logs del contenedor en Easypanel o utiliza el botón de Fallback a continuación.'
+          };
+        }
+
         statusText.textContent = 'Streaming finalizado. Reproduciendo...';
         log('success', `Streaming completo finalizado (${chunkCount} chunks). Iniciando reproducción...`);
         const blob = new Blob(chunks, { type: format === 'wav' ? 'audio/wav' : 'audio/mpeg' });

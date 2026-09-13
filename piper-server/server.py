@@ -80,7 +80,7 @@ def synthesize_speech():
     try:
         length_scale = str(max(0.5, min(2.0, 1.0 / speed))) if speed > 0 else "1.0"
         cmd = [
-            "piper",
+            sys.executable, "-m", "piper",
             "--model", onnx_path,
             "--output_file", wav_path,
             "--length_scale", length_scale
@@ -94,7 +94,7 @@ def synthesize_speech():
             stderr=subprocess.PIPE,
             text=True
         )
-        _, stderr = proc.communicate(input=input_text)
+        _, stderr = proc.communicate(input=input_text + "\n")
         piper_duration = round((time.time() - piper_start) * 1000)
 
         if proc.returncode != 0:

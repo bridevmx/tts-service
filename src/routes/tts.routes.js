@@ -24,6 +24,9 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
   const requestedFormat = (format || 'mp3').toLowerCase();
   const mimeType = requestedFormat === 'wav' ? 'audio/wav' : 'audio/mpeg';
 
+  const sentences = splitTextIntoSentences(text, 220);
+  console.log(`[TTS Route Debug] Stream request started. Text length: ${text.length}, Sentences count: ${sentences.length}, Voice: ${voice}`);
+
   res.writeHead(200, {
     'Content-Type': mimeType,
     'Transfer-Encoding': 'chunked',
@@ -32,14 +35,18 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
     'X-Accel-Buffering': 'no' // Disables proxy buffering in Nginx / Traefik
   });
 
-  const sentences = splitTextIntoSentences(text, 220);
+  const startTime = Date.now();
+  let chunkIndex = 0;
 
   try {
     for (const sentence of sentences) {
       if (res.writableEnded || req.destroyed) {
+        console.warn(`[TTS Route Debug] Client disconnected early at sentence #${chunkIndex + 1}`);
         break;
       }
 
+      chunkIndex++;
+      const chunkStart = Date.now();
       try {
         const audioBuffer = await synthesizeSentence({
           text: sentence,
@@ -48,16 +55,21 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
           format: requestedFormat
         });
 
+        const chunkDuration = Date.now() - chunkStart;
+        console.log(`[TTS Route Debug] Sentence #${chunkIndex}/${sentences.length} synthesized in ${chunkDuration} ms (${audioBuffer.length} bytes)`);
+
         if (!res.writableEnded && !req.destroyed) {
           res.write(audioBuffer);
         }
       } catch (err) {
-        console.error(`[Streaming Chunk Error] Failed sentence: "${sentence.slice(0, 30)}..." - ${err.message}`);
+        console.error(`[TTS Route Debug] Chunk #${chunkIndex} failed: "${sentence.slice(0, 30)}..." - Error: ${err.message}`);
       }
     }
   } catch (error) {
-    console.error('[Streaming Loop Error]:', error.message);
+    console.error('[TTS Route Debug] Streaming Loop Error:', error.message);
   } finally {
+    const totalDuration = Date.now() - startTime;
+    console.log(`[TTS Route Debug] Streaming request finished in ${totalDuration} ms (${chunkIndex} chunks sent)`);
     if (!res.writableEnded) {
       res.end();
     }
@@ -84,20 +96,24 @@ router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
   const mimeType = requestedFormat === 'wav' ? 'audio/wav' : 'audio/mpeg';
 
   const sentences = splitTextIntoSentences(text, 220);
+  console.log(`[TTS Route Debug] Block synthesize request started. Sentences count: ${sentences.length}`);
 
   try {
     const buffers = [];
+    let idx = 0;
     for (const sentence of sentences) {
-      const chunkBuffer = await synthesizeSentence({
+      idx++;
+      const audioBuffer = await synthesizeSentence({
         text: sentence,
         voice,
         speed,
         format: requestedFormat
       });
-      buffers.push(chunkBuffer);
+      buffers.push(audioBuffer);
     }
 
     const fullAudio = Buffer.concat(buffers);
+    console.log(`[TTS Route Debug] Block synthesize completed. Total bytes: ${fullAudio.length}`);
 
     res.writeHead(200, {
       'Content-Type': mimeType,
@@ -107,7 +123,7 @@ router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
 
     res.end(fullAudio);
   } catch (error) {
-    console.error('[Synthesize Error]:', error.message);
+    console.error('[TTS Route Debug] Synthesize Error:', error.message);
     if (!res.headersSent) {
       res.status(502).json({ error: 'Error al sintetizar el audio completo.' });
     }

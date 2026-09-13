@@ -19,17 +19,33 @@ export async function synthesizeSentence({ text, voice = config.defaultVoice, sp
     response_format: format
   };
 
-  const response = await fetch(config.piperUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  const startTime = Date.now();
+  console.log(`[Piper Service Debug] Sending request to Piper (${config.piperUrl}) - Voice: ${voice}, Format: ${format}, Text length: ${text.length}`);
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(`Piper synthesis failed with status ${response.status}: ${errorBody}`);
+  try {
+    const response = await fetch(config.piperUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000) // 30 second timeout for model download / rendering
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[Piper Service Debug] HTTP ${response.status} from Piper engine: ${errorBody}`);
+      throw new Error(`Piper synthesis failed with status ${response.status}: ${errorBody}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const duration = Date.now() - startTime;
+    console.log(`[Piper Service Debug] Received ${arrayBuffer.byteLength} bytes from Piper in ${duration} ms`);
+    return Buffer.from(arrayBuffer);
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      console.error(`[Piper Service Debug] Timeout (30s) waiting for Piper engine at ${config.piperUrl}`);
+      throw new Error(`Timeout waiting for Piper engine at ${config.piperUrl}`);
+    }
+    console.error(`[Piper Service Debug] Synthesis error:`, err.message);
+    throw err;
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
 }

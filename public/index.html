@@ -225,7 +225,13 @@
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout (allows voice model download on first cold start)
+
+        // Warn user after 5s that the model might be loading for the first time
+        const slowWarningId = setTimeout(() => {
+          statusText.textContent = 'Sintetizando... (primer inicio: descargando modelo de voz, puede tardar ~15s)';
+          log('warn', 'El servidor está tardando más de lo normal. Si es el primer inicio, el modelo de voz se está descargando de HuggingFace.');
+        }, 5000);
 
         const res = await fetch('/v1/tts/stream', {
           method: 'POST',
@@ -234,6 +240,7 @@
           signal: controller.signal
         });
         clearTimeout(timeoutId);
+        clearTimeout(slowWarningId);
 
         log('info', `Respuesta HTTP ${res.status} ${res.statusText} recibida`);
 
@@ -294,7 +301,7 @@
 
       } catch (err) {
         if (err.name === 'AbortError') {
-          showError('Tiempo de espera agotado (12s timeout)', 'El servidor tardó demasiado en responder.');
+          showError('Tiempo de espera agotado (90s timeout)', 'El servidor tardó demasiado. Si es el primer inicio, el modelo de voz puede estar descargándose. Espera 30 segundos e intenta de nuevo.');
         } else {
           showError(err.message || err, err.hint || '');
         }

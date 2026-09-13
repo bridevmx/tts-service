@@ -3,6 +3,7 @@ import sys
 import time
 import subprocess
 import tempfile
+import threading
 import urllib.request
 from flask import Flask, request, Response, jsonify
 
@@ -13,6 +14,9 @@ app = Flask(__name__)
 CACHE_DIR = os.getenv("PIPER_CACHE_DIR", "/data")
 VOICES_DIR = os.path.join(CACHE_DIR, "voices")
 os.makedirs(VOICES_DIR, exist_ok=True)
+
+# Default voice to pre-warm on server startup (avoids cold-start latency on first request)
+WARMUP_VOICE = os.getenv("PIPER_WARMUP_VOICE", "es_MX-ald-medium")
 
 # Voice model download URLs mapping (HuggingFace Piper releases)
 VOICE_MAP = {
@@ -142,6 +146,20 @@ def synthesize_speech():
         if os.path.exists(wav_path):
             os.remove(wav_path)
 
+def warmup_default_voice():
+    """Download and cache the default voice model at startup to eliminate cold-start latency."""
+    try:
+        print(f"[Piper Engine] Warming up default voice model '{WARMUP_VOICE}'...", flush=True)
+        warmup_start = time.time()
+        ensure_voice_downloaded(WARMUP_VOICE)
+        warmup_duration = round((time.time() - warmup_start) * 1000)
+        print(f"[Piper Engine] Warm-up complete for '{WARMUP_VOICE}' in {warmup_duration} ms.", flush=True)
+    except Exception as e:
+        print(f"[Piper Engine Warning] Warm-up failed for '{WARMUP_VOICE}': {e}", flush=True)
+
+
 if __name__ == "__main__":
     print("[Piper Engine] Starting server on 0.0.0.0:5000", flush=True)
+    # Pre-download default voice model in background thread so Flask starts immediately
+    threading.Thread(target=warmup_default_voice, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=False)

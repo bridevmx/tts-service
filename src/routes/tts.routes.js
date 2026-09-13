@@ -33,7 +33,7 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
 
   try {
     for (const sentence of sentences) {
-      if (res.writableEnded || req.destroyed) {
+      if (res.writableEnded || res.destroyed || req.socket?.destroyed) {
         console.warn(`[TTS Route Debug] Client disconnected early at sentence #${chunkIndex + 1}`);
         break;
       }
@@ -62,7 +62,7 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
           headersSent = true;
         }
 
-        if (!res.writableEnded && !req.destroyed) {
+        if (!res.writableEnded && !res.destroyed && !req.socket?.destroyed) {
           res.write(audioBuffer);
         }
       } catch (err) {

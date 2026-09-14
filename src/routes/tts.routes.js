@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requirePocketbaseAuth } from '../middleware/pb-auth.js';
 import { splitTextIntoSentences } from '../services/text-splitter.js';
 import { synthesizeSentence } from '../services/piper.service.js';
+import { audioCache } from '../services/audio-cache.js';
 import { config } from '../config.js';
 
 const router = Router();
@@ -41,15 +42,23 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
       chunkIndex++;
       const chunkStart = Date.now();
       try {
-        const audioBuffer = await synthesizeSentence({
-          text: sentence,
-          voice,
-          speed,
-          format: requestedFormat
-        });
+        let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat);
+        let fromCache = false;
+
+        if (audioBuffer) {
+          fromCache = true;
+        } else {
+          audioBuffer = await synthesizeSentence({
+            text: sentence,
+            voice,
+            speed,
+            format: requestedFormat
+          });
+          audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer);
+        }
 
         const chunkDuration = Date.now() - chunkStart;
-        console.log(`[TTS Route Debug] Sentence #${chunkIndex}/${sentences.length} synthesized in ${chunkDuration} ms (${audioBuffer.length} bytes)`);
+        console.log(`[TTS Route Debug] Sentence #${chunkIndex}/${sentences.length} ${fromCache ? '[CACHE HIT]' : 'synthesized'} in ${chunkDuration} ms (${audioBuffer.length} bytes)`);
 
         if (!headersSent && !res.headersSent) {
           res.writeHead(200, {
@@ -116,12 +125,16 @@ router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
   try {
     const buffers = [];
     for (const sentence of sentences) {
-      const audioBuffer = await synthesizeSentence({
-        text: sentence,
-        voice,
-        speed,
-        format: requestedFormat
-      });
+      let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat);
+      if (!audioBuffer) {
+        audioBuffer = await synthesizeSentence({
+          text: sentence,
+          voice,
+          speed,
+          format: requestedFormat
+        });
+        audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer);
+      }
       buffers.push(audioBuffer);
     }
 
@@ -141,6 +154,13 @@ router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
       res.status(502).json({ error: `Error al sintetizar el audio completo: ${error.message}` });
     }
   }
+});
+
+/**
+ * Cache metrics endpoint.
+ */
+router.get('/cache-stats', requirePocketbaseAuth, (req, res) => {
+  res.status(200).json(audioCache.getStats());
 });
 
 export default router;

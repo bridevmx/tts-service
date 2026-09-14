@@ -36,6 +36,11 @@ RUN npm ci --only=production
 # Copy application source code and scripts
 COPY . .
 
+# Pre-download default voice model (es_MX-ald-medium) at build time for 0ms cold-start
+RUN mkdir -p /app/prebundled_voices && \
+    curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx" && \
+    curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json"
+
 # Set executable permission for startup entrypoint
 RUN chmod +x /app/start.sh
 
@@ -54,4 +59,4 @@ EXPOSE 80
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -f http://127.0.0.1:${PORT:-3000}/health || exit 1
 
-CMD ["/app/start.sh"]
+CMD ["sh", "/app/start.sh"]

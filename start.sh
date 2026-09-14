@@ -19,7 +19,14 @@ echo "[Entrypoint] Starting TTS Service Microservice..."
 echo "[Entrypoint] Python Runtime Binary: ${PYTHON_BIN:-'NOT FOUND'}"
 
 # Pre-create model directory if volume mounted
-mkdir -p "${PIPER_CACHE_DIR:-/data}/voices"
+TARGET_VOICES_DIR="${PIPER_CACHE_DIR:-/data}/voices"
+mkdir -p "$TARGET_VOICES_DIR"
+
+# Copy pre-bundled models if available and not already in target volume
+if [ -d "/app/prebundled_voices" ]; then
+  echo "[Entrypoint] Syncing pre-bundled voice models to $TARGET_VOICES_DIR..."
+  cp -n /app/prebundled_voices/* "$TARGET_VOICES_DIR/" 2>/dev/null || true
+fi
 
 # Start internal Piper engine unless explicitly disabled
 if [ -n "$PYTHON_BIN" ] && [ "$DISABLE_INTERNAL_PIPER" != "true" ] && [ "$DISABLE_INTERNAL_PIPER" != "1" ]; then

@@ -11,24 +11,45 @@ router.get('/voices', requirePocketbaseAuth, (req, res) => {
     voices: [
       {
         id: 'es_MX-ald-medium',
-        name: 'Ald (México - Rápido)',
+        name: 'Ald (México - Masculina Rápida)',
         lang: 'es-MX',
         quality: 'medium',
-        recommended_for: 'Baja latencia y textos largos'
+        recommended_for: 'Baja latencia y respuestas en tiempo real'
       },
       {
         id: 'es_MX-claude-high',
-        name: 'Claude (México - Alta fidelidad)',
+        name: 'Claude (México - Masculina Alta Fidelidad)',
         lang: 'es-MX',
         quality: 'high',
-        recommended_for: 'Textos cortos, máxima calidad'
+        recommended_for: 'Máxima calidad de audio'
       },
       {
         id: 'es_ES-davefx-medium',
-        name: 'Dave (España)',
+        name: 'Dave (España - Masculina)',
         lang: 'es-ES',
         quality: 'medium',
-        recommended_for: 'Acento peninsular'
+        recommended_for: 'Acento peninsular masculino'
+      },
+      {
+        id: 'es_ES-carlfm-x_low',
+        name: 'Carlfm (España - Masculina Ultra Ligera)',
+        lang: 'es-ES',
+        quality: 'x_low',
+        recommended_for: 'Ultra bajo consumo de memoria'
+      },
+      {
+        id: 'es_ES-sharvard-medium',
+        name: 'Sharvard (España - Femenina)',
+        lang: 'es-ES',
+        quality: 'medium',
+        recommended_for: 'Acento peninsular femenino'
+      },
+      {
+        id: 'es_AR-css10-medium',
+        name: 'CSS10 (Argentina - Femenina)',
+        lang: 'es-AR',
+        quality: 'medium',
+        recommended_for: 'Acento rioplatense'
       }
     ]
   });

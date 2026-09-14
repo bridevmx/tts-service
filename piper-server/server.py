@@ -31,6 +31,18 @@ VOICE_MAP = {
     "es_ES-davefx-medium": {
         "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
         "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json"
+    },
+    "es_ES-carlfm-x_low": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/carlfm/x_low/es_ES-carlfm-x_low.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/carlfm/x_low/es_ES-carlfm-x_low.onnx.json"
+    },
+    "es_ES-sharvard-medium": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
+    },
+    "es_AR-css10-medium": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/css10/medium/es_AR-css10-medium.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/css10/medium/es_AR-css10-medium.onnx.json"
     }
 }
 

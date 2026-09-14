@@ -45,17 +45,45 @@ VOICE_MAP = {
     }
 }
 
-# Optional Kokoro-ONNX runtime
+# Kokoro-ONNX model URLs
+KOKORO_MODEL_URL = "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/kokoro-v1.0.onnx"
+KOKORO_VOICES_URL = "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/voices-v1.0.json"
+
 kokoro_instance = None
-try:
-    from kokoro_onnx import Kokoro
-    kokoro_onnx_path = os.path.join(CACHE_DIR, "kokoro-v1.0.onnx")
-    kokoro_json_path = os.path.join(CACHE_DIR, "voices-v1.0.json")
-    if os.path.exists(kokoro_onnx_path) and os.path.exists(kokoro_json_path):
-        kokoro_instance = Kokoro(kokoro_onnx_path, kokoro_json_path)
-        print("[TTS Engine] Loaded Kokoro-ONNX model successfully.", flush=True)
-except Exception as _e:
-    print(f"[TTS Engine Info] Kokoro-ONNX model not loaded: {_e}", flush=True)
+
+def get_kokoro():
+    global kokoro_instance
+    if kokoro_instance is not None:
+        return kokoro_instance
+
+    try:
+        from kokoro_onnx import Kokoro
+        onnx_path = os.path.join(CACHE_DIR, "kokoro-v1.0.onnx")
+        json_path = os.path.join(CACHE_DIR, "voices-v1.0.json")
+
+        # Check if prebundled files exist in /app/prebundled_voices
+        pre_onnx = "/app/prebundled_voices/kokoro-v1.0.onnx"
+        pre_json = "/app/prebundled_voices/voices-v1.0.json"
+        if not os.path.exists(onnx_path) and os.path.exists(pre_onnx):
+            shutil.copy(pre_onnx, onnx_path)
+        if not os.path.exists(json_path) and os.path.exists(pre_json):
+            shutil.copy(pre_json, json_path)
+
+        if not os.path.exists(onnx_path) or not os.path.exists(json_path):
+            print(f"[Kokoro Engine] Downloading Kokoro-ONNX model to {CACHE_DIR}...", flush=True)
+            dl_start = time.time()
+            if not os.path.exists(onnx_path):
+                urllib.request.urlretrieve(KOKORO_MODEL_URL, onnx_path)
+            if not os.path.exists(json_path):
+                urllib.request.urlretrieve(KOKORO_VOICES_URL, json_path)
+            print(f"[Kokoro Engine] Downloaded Kokoro model in {round((time.time() - dl_start)*1000)} ms.", flush=True)
+
+        kokoro_instance = Kokoro(onnx_path, json_path)
+        print("[Kokoro Engine] Loaded Kokoro-ONNX model into memory successfully.", flush=True)
+        return kokoro_instance
+    except Exception as e:
+        print(f"[Kokoro Engine Info] Could not load Kokoro-ONNX: {e}", flush=True)
+        return None
 
 def ensure_voice_downloaded(voice_id):
     if voice_id not in VOICE_MAP:
@@ -108,20 +136,21 @@ def synthesize_speech():
 
     try:
         # Route 1: Kokoro-82M ONNX engine
-        if (model_param in ["kokoro", "tts-1-hd", "kokoro-82m"]) and kokoro_instance is not None:
+        k_instance = get_kokoro() if model_param in ["kokoro", "tts-1-hd", "kokoro-82m"] else None
+        if (model_param in ["kokoro", "tts-1-hd", "kokoro-82m"]) and k_instance is not None:
             try:
                 import soundfile as sf
                 print(f"[TTS Engine Debug] Synthesizing with Kokoro-ONNX...", flush=True)
                 # Default spanish voice in kokoro-onnx
                 kokoro_voice = "ef_dora" if "female" in voice_id.lower() or "sharvard" in voice_id.lower() else "em_alex"
-                samples, sample_rate = kokoro_instance.create(input_text, voice=kokoro_voice, speed=speed, lang="es")
+                samples, sample_rate = k_instance.create(input_text, voice=kokoro_voice, speed=speed, lang="es")
                 sf.write(wav_path, samples, sample_rate)
             except Exception as e:
                 print(f"[TTS Engine Error] Kokoro synthesis failed ({e}), falling back to Piper.", flush=True)
                 model_param = "piper"
 
         # Route 2: Piper engine (default and robust fallback)
-        if model_param not in ["kokoro", "tts-1-hd"] or kokoro_instance is None:
+        if model_param not in ["kokoro", "tts-1-hd"] or k_instance is None:
             onnx_path = ensure_voice_downloaded(voice_id)
             length_scale = str(max(0.5, min(2.0, 1.0 / speed))) if speed > 0 else "1.0"
             piper_exe = shutil.which("piper") or os.path.join(os.path.dirname(sys.executable), "piper") or "piper"
@@ -185,19 +214,32 @@ def synthesize_speech():
         if os.path.exists(wav_path):
             os.remove(wav_path)
 
-def warmup_default_voice():
-    """Download and cache the default voice model at startup to eliminate cold-start latency."""
+def warmup_all_engines():
+    """Download and pre-warm Piper and Kokoro models at startup to eliminate cold-start latency."""
+    # 1. Warm-up Piper default voice
     try:
         print(f"[Piper Engine] Warming up default voice model '{WARMUP_VOICE}'...", flush=True)
         warmup_start = time.time()
         ensure_voice_downloaded(WARMUP_VOICE)
         warmup_duration = round((time.time() - warmup_start) * 1000)
-        print(f"[Piper Engine] Warm-up complete for '{WARMUP_VOICE}' in {warmup_duration} ms.", flush=True)
+        print(f"[Piper Engine] Piper warm-up complete for '{WARMUP_VOICE}' in {warmup_duration} ms.", flush=True)
     except Exception as e:
-        print(f"[Piper Engine Warning] Warm-up failed for '{WARMUP_VOICE}': {e}", flush=True)
+        print(f"[Piper Engine Warning] Piper warm-up failed for '{WARMUP_VOICE}': {e}", flush=True)
+
+    # 2. Warm-up Kokoro-ONNX model into RAM
+    try:
+        print("[Kokoro Engine] Pre-warming Kokoro-ONNX model in background...", flush=True)
+        k_start = time.time()
+        k = get_kokoro()
+        if k is not None:
+            # Perform a micro dummy synthesis in memory to warm up ONNX session tensors
+            _samples, _sr = k.create("Hola", voice="em_alex", speed=1.0, lang="es")
+            print(f"[Kokoro Engine] Kokoro-ONNX pre-warm complete in {round((time.time() - k_start)*1000)} ms.", flush=True)
+    except Exception as e:
+        print(f"[Kokoro Engine Warning] Kokoro warm-up warning: {e}", flush=True)
 
 if __name__ == "__main__":
     print("[TTS Engine] Starting server on 0.0.0.0:5000", flush=True)
-    # Pre-download default voice model in background thread so Flask starts immediately
-    threading.Thread(target=warmup_default_voice, daemon=True).start()
+    # Pre-download and pre-warm models in background thread so Flask starts immediately
+    threading.Thread(target=warmup_all_engines, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=False)

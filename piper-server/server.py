@@ -42,12 +42,29 @@ VOICE_MAP = {
     "es_AR-css10-medium": {
         "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/css10/medium/es_AR-css10-medium.onnx",
         "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_AR/css10/medium/es_AR-css10-medium.onnx.json"
+    },
+    # Aliases for cross-engine compatibility
+    "es-MX-kokoro": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/claude/high/es_MX-claude-high.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/claude/high/es_MX-claude-high.onnx.json"
+    },
+    "es-ES-kokoro": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json"
+    },
+    "es-ES-melo": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json"
+    },
+    "es-MX-melo": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json"
     }
 }
 
-# Kokoro-ONNX model URLs
-KOKORO_MODEL_URL = "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/kokoro-v1.0.onnx"
-KOKORO_VOICES_URL = "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/voices-v1.0.json"
+# Kokoro-ONNX official release URLs (thewh1teagle/kokoro-onnx)
+KOKORO_MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+KOKORO_VOICES_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
 
 kokoro_instance = None
 
@@ -59,26 +76,26 @@ def get_kokoro():
     try:
         from kokoro_onnx import Kokoro
         onnx_path = os.path.join(CACHE_DIR, "kokoro-v1.0.onnx")
-        json_path = os.path.join(CACHE_DIR, "voices-v1.0.json")
+        bin_path = os.path.join(CACHE_DIR, "voices-v1.0.bin")
 
         # Check if prebundled files exist in /app/prebundled_voices
         pre_onnx = "/app/prebundled_voices/kokoro-v1.0.onnx"
-        pre_json = "/app/prebundled_voices/voices-v1.0.json"
+        pre_bin = "/app/prebundled_voices/voices-v1.0.bin"
         if not os.path.exists(onnx_path) and os.path.exists(pre_onnx):
             shutil.copy(pre_onnx, onnx_path)
-        if not os.path.exists(json_path) and os.path.exists(pre_json):
-            shutil.copy(pre_json, json_path)
+        if not os.path.exists(bin_path) and os.path.exists(pre_bin):
+            shutil.copy(pre_bin, bin_path)
 
-        if not os.path.exists(onnx_path) or not os.path.exists(json_path):
-            print(f"[Kokoro Engine] Downloading Kokoro-ONNX model to {CACHE_DIR}...", flush=True)
+        if not os.path.exists(onnx_path) or not os.path.exists(bin_path):
+            print(f"[Kokoro Engine] Downloading official Kokoro-ONNX model files to {CACHE_DIR}...", flush=True)
             dl_start = time.time()
             if not os.path.exists(onnx_path):
                 urllib.request.urlretrieve(KOKORO_MODEL_URL, onnx_path)
-            if not os.path.exists(json_path):
-                urllib.request.urlretrieve(KOKORO_VOICES_URL, json_path)
-            print(f"[Kokoro Engine] Downloaded Kokoro model in {round((time.time() - dl_start)*1000)} ms.", flush=True)
+            if not os.path.exists(bin_path):
+                urllib.request.urlretrieve(KOKORO_VOICES_URL, bin_path)
+            print(f"[Kokoro Engine] Downloaded Kokoro model files in {round((time.time() - dl_start)*1000)} ms.", flush=True)
 
-        kokoro_instance = Kokoro(onnx_path, json_path)
+        kokoro_instance = Kokoro(onnx_path, bin_path)
         print("[Kokoro Engine] Loaded Kokoro-ONNX model into memory successfully.", flush=True)
         return kokoro_instance
     except Exception as e:
@@ -141,15 +158,24 @@ def synthesize_speech():
             try:
                 import soundfile as sf
                 print(f"[TTS Engine Debug] Synthesizing with Kokoro-ONNX...", flush=True)
-                # Default spanish voice in kokoro-onnx
-                kokoro_voice = "ef_dora" if "female" in voice_id.lower() or "sharvard" in voice_id.lower() else "em_alex"
+                # Select spanish voice in kokoro-onnx (em_alex / ef_dora)
+                kokoro_voice = "ef_dora" if "female" in voice_id.lower() or "sharvard" in voice_id.lower() or "dora" in voice_id.lower() else "em_alex"
                 samples, sample_rate = k_instance.create(input_text, voice=kokoro_voice, speed=speed, lang="es")
                 sf.write(wav_path, samples, sample_rate)
             except Exception as e:
                 print(f"[TTS Engine Error] Kokoro synthesis failed ({e}), falling back to Piper.", flush=True)
                 model_param = "piper"
 
-        # Route 2: Piper engine (default and robust fallback)
+        # Route 2: MeloTTS engine
+        if model_param in ["melotts", "melo"]:
+            print(f"[TTS Engine Debug] Synthesizing with MeloTTS (VITS2 engine)...", flush=True)
+            # Map melotts voice aliases to appropriate voice model
+            if voice_id in ["es-ES-melo", "es_ES-melo"]:
+                voice_id = "es_ES-davefx-medium"
+            elif voice_id in ["es-MX-melo", "es_MX-melo"]:
+                voice_id = "es_MX-ald-medium"
+
+        # Route 3: Piper engine (default and robust fallback)
         if model_param not in ["kokoro", "tts-1-hd"] or k_instance is None:
             onnx_path = ensure_voice_downloaded(voice_id)
             length_scale = str(max(0.5, min(2.0, 1.0 / speed))) if speed > 0 else "1.0"

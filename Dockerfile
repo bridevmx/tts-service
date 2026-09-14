@@ -40,8 +40,8 @@ COPY . .
 RUN mkdir -p /app/prebundled_voices && \
     curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx" && \
     curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json" && \
-    curl -L -o /app/prebundled_voices/kokoro-v1.0.onnx "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/kokoro-v1.0.onnx" && \
-    curl -L -o /app/prebundled_voices/voices-v1.0.json "https://github.com/thewhitetulip/kokoro-onnx/releases/download/v0.3.0/voices-v1.0.json"
+    curl -L -o /app/prebundled_voices/kokoro-v1.0.onnx "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx" && \
+    curl -L -o /app/prebundled_voices/voices-v1.0.bin "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
 
 # Set executable permission for startup entrypoint
 RUN chmod +x /app/start.sh

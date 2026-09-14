@@ -11,17 +11,22 @@
     .input-field { background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; }
     .input-field:focus { border-color: #38bdf8; outline: none; }
     .console-box { background-color: #090d16; border: 1px solid #1e293b; font-family: monospace; }
+    .tab-btn { transition: all 0.2s ease; border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; background-color: rgba(56, 189, 248, 0.1); }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
 
-  <div class="max-w-3xl w-full card rounded-xl p-6 md:p-8 shadow-2xl space-y-6">
+  <div class="max-w-4xl w-full card rounded-xl p-6 md:p-8 shadow-2xl space-y-6">
+    <!-- Header -->
     <div class="border-b border-slate-700 pb-4">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-sky-400">🎙️ Ultra-Low Latency TTS Studio</h1>
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h1 class="text-2xl font-bold text-sky-400 flex items-center gap-2">
+          <span>🎙️</span> Ultra-Low Latency TTS Studio
+        </h1>
         <span id="health-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-900 text-emerald-300 border border-emerald-700">Verificando...</span>
       </div>
-      <p class="text-sm text-slate-400 mt-1">Prueba en tiempo real con consola de depuración en vivo y reproducción fallback por Web Speech API.</p>
+      <p class="text-sm text-slate-400 mt-1">Soporte multi-modelo por pestañas: Piper TTS (Ultra rápido), Kokoro-82M (Alta Fidelidad) y MeloTTS (VITS2 Nativo).</p>
     </div>
 
     <!-- Auth Config -->
@@ -34,49 +39,112 @@
       <p class="text-xs text-slate-400">Pega el token obtenido de PocketBase (ej: <code>POST /api/collections/users/auth-with-password</code>).</p>
     </div>
 
-    <!-- TTS Form -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Modelo Engine</label>
-        <select id="model-select" class="w-full p-2.5 rounded-lg input-field text-sm">
-          <option value="piper">Piper TTS (Ultra Rápido)</option>
-          <option value="kokoro">Kokoro-82M (Alta Calidad HD)</option>
-          <option value="melotts">MeloTTS (VITS2 Nativo)</option>
-        </select>
+    <!-- Engine Navigation Tabs -->
+    <div class="space-y-3">
+      <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Selecciona el Motor de Voz (Engine)</label>
+      <div class="flex border-b border-slate-700 space-x-1">
+        <button id="tab-piper" class="tab-btn active px-4 py-2.5 rounded-t-lg font-semibold text-sm flex items-center space-x-2">
+          <span>⚡ Piper TTS</span>
+          <span class="text-xs bg-sky-900 text-sky-300 px-2 py-0.5 rounded-full border border-sky-700">Ultra Rápido</span>
+        </button>
+        <button id="tab-kokoro" class="tab-btn px-4 py-2.5 rounded-t-lg font-semibold text-sm text-slate-400 flex items-center space-x-2">
+          <span>🎭 Kokoro-82M</span>
+          <span class="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full border border-purple-700">Alta Calidad HD</span>
+        </button>
+        <button id="tab-melo" class="tab-btn px-4 py-2.5 rounded-t-lg font-semibold text-sm text-slate-400 flex items-center space-x-2">
+          <span>🎵 MeloTTS</span>
+          <span class="text-xs bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700">VITS2 Nativo</span>
+        </button>
       </div>
+    </div>
 
-      <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Versión</label>
-        <select id="version-select" class="w-full p-2.5 rounded-lg input-field text-sm">
-          <option value="v1">v1 (Estable)</option>
-          <option value="latest">latest</option>
-        </select>
+    <!-- Tab 1 Panel: Piper TTS -->
+    <div id="panel-piper" class="p-4 rounded-lg bg-slate-900/60 border border-sky-900/50 space-y-4">
+      <div class="flex items-center justify-between text-xs text-slate-400">
+        <span class="text-sky-300 font-semibold">Parámetros específicos para Piper TTS:</span>
+        <span>Modelo: <code class="text-sky-400 font-mono">piper</code></span>
       </div>
-
-      <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voz en Español</label>
-        <select id="voice-select" class="w-full p-2.5 rounded-lg input-field text-sm">
-          <option value="es_MX-ald-medium">es_MX-ald-medium (🇲🇽 México - Rápida)</option>
-          <option value="es_MX-claude-high">es_MX-claude-high (🇲🇽 México - Alta Fidelidad)</option>
-          <option value="es_ES-davefx-medium">es_ES-davefx-medium (🇪🇸 España - Masculina)</option>
-          <option value="es_ES-carlfm-x_low">es_ES-carlfm-x_low (🇪🇸 España - Ultra Ligera)</option>
-          <option value="es_ES-sharvard-medium">es_ES-sharvard-medium (🇪🇸 España - Femenina)</option>
-          <option value="es_AR-css10-medium">es_AR-css10-medium (🇦🇷 Argentina - Femenina)</option>
-          <option value="es-MX-kokoro">es-MX-kokoro (🇲🇽 México HD)</option>
-          <option value="es-ES-melo">es-ES-melo (🇪🇸 España VITS2)</option>
-        </select>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voz Piper en Español</label>
+          <select id="piper-voice" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="es_MX-ald-medium">es_MX-ald-medium (🇲🇽 México - Rápida)</option>
+            <option value="es_MX-claude-high">es_MX-claude-high (🇲🇽 México - Alta Fidelidad)</option>
+            <option value="es_ES-davefx-medium">es_ES-davefx-medium (🇪🇸 España - Masculina)</option>
+            <option value="es_ES-carlfm-x_low">es_ES-carlfm-x_low (🇪🇸 España - Ultra Ligera)</option>
+            <option value="es_ES-sharvard-medium">es_ES-sharvard-medium (🇪🇸 España - Femenina)</option>
+            <option value="es_AR-css10-medium">es_AR-css10-medium (🇦🇷 Argentina - Femenina)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Versión de Audio</label>
+          <select id="piper-version" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="v1">v1 (Versión Estable)</option>
+            <option value="latest">latest (Última compilación)</option>
+          </select>
+        </div>
       </div>
+    </div>
 
+    <!-- Tab 2 Panel: Kokoro-82M -->
+    <div id="panel-kokoro" class="hidden p-4 rounded-lg bg-slate-900/60 border border-purple-900/50 space-y-4">
+      <div class="flex items-center justify-between text-xs text-slate-400">
+        <span class="text-purple-300 font-semibold">Parámetros específicos para Kokoro-82M:</span>
+        <span>Modelo: <code class="text-purple-400 font-mono">kokoro</code></span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voz Kokoro en Español</label>
+          <select id="kokoro-voice" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="es-MX-kokoro">em_alex (🇲🇽 México - Masculina HD)</option>
+            <option value="es-ES-kokoro">ef_dora (🇪🇸 España - Femenina HD)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Versión de Audio</label>
+          <select id="kokoro-version" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="v1">v1 (StyleTTS 2 Inferencia ONNX)</option>
+            <option value="latest">latest</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3 Panel: MeloTTS -->
+    <div id="panel-melo" class="hidden p-4 rounded-lg bg-slate-900/60 border border-emerald-900/50 space-y-4">
+      <div class="flex items-center justify-between text-xs text-slate-400">
+        <span class="text-emerald-300 font-semibold">Parámetros específicos para MeloTTS:</span>
+        <span>Modelo: <code class="text-emerald-400 font-mono">melotts</code></span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voz MeloTTS en Español</label>
+          <select id="melo-voice" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="es-ES-melo">es-ES-melo (🇪🇸 España - VITS2)</option>
+            <option value="es-MX-melo">es-MX-melo (🇲🇽 México - VITS2)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Versión de Audio</label>
+          <select id="melo-version" class="w-full p-2.5 rounded-lg input-field text-sm">
+            <option value="v1">v1 (VITS2 MyShell Engine)</option>
+            <option value="latest">latest</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- General Parameters -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Velocidad (<span id="speed-val">1.0</span>x)</label>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Velocidad de habla (<span id="speed-val">1.0</span>x)</label>
         <input type="range" id="speed-range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer mt-3">
       </div>
-
       <div class="space-y-1">
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Formato</label>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Formato de Salida</label>
         <select id="format-select" class="w-full p-2.5 rounded-lg input-field text-sm">
-          <option value="mp3">MP3 (Streaming)</option>
-          <option value="wav">WAV (Sin Compresión)</option>
+          <option value="mp3">MP3 (Streaming Progresivo)</option>
+          <option value="wav">WAV (Audio Sin Compresión)</option>
         </select>
       </div>
     </div>
@@ -84,7 +152,7 @@
     <!-- Text Area -->
     <div class="space-y-2">
       <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Texto a sintetizar</label>
-      <textarea id="tts-text" rows="4" class="w-full p-3 rounded-lg input-field text-sm" placeholder="Escribe el texto que deseas sintetizar...">Hola, este es un texto de prueba para síntesis de voz en tiempo real con ultra baja latencia. Puedes escribir párrafos más largos y la voz comenzará a reproducirse de inmediato gracias a la segmentación por frases en streaming.</textarea>
+      <textarea id="tts-text" rows="4" class="w-full p-3 rounded-lg input-field text-sm" placeholder="Escribe el texto que deseas sintetizar...">¡Hola! Bienvenidos a nuestra nueva plataforma de síntesis de voz en tiempo real. Estamos realmente emocionados de mostrarte cómo la inteligencia artificial puede transformar el texto en experiencias sonoras increíbles.</textarea>
     </div>
 
     <!-- Controls -->
@@ -104,6 +172,7 @@
     <div id="status-card" class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 space-y-3">
       <div class="flex justify-between items-center text-xs text-slate-400 flex-wrap gap-2">
         <span>Estado: <strong id="status-text" class="text-slate-200">Listo</strong></span>
+        <span>Motor Activo: <strong id="active-model-text" class="text-sky-400 font-mono">piper (v1)</strong></span>
         <span>TTFA (Primer Audio): <strong id="metric-ttfa" class="text-sky-400">-- ms</strong></span>
         <span>Chunks recibidos: <strong id="metric-chunks" class="text-emerald-400">0</strong></span>
       </div>
@@ -123,16 +192,26 @@
         <button id="btn-clear-logs" class="text-xs text-slate-500 hover:text-slate-300">Limpiar Consola</button>
       </div>
       <div id="debug-console" class="console-box h-40 p-3 rounded-lg overflow-y-auto text-xs text-slate-300 space-y-1">
-        <div class="text-slate-500">[System] Consola inicializada. Esperando acciones...</div>
+        <div class="text-slate-500">[System] Consola inicializada. Pestaña activa: Piper TTS.</div>
       </div>
     </div>
   </div>
 
   <script>
+    // Elements
+    const tabPiper = document.getElementById('tab-piper');
+    const tabKokoro = document.getElementById('tab-kokoro');
+    const tabMelo = document.getElementById('tab-melo');
+
+    const panelPiper = document.getElementById('panel-piper');
+    const panelKokoro = document.getElementById('panel-kokoro');
+    const panelMelo = document.getElementById('panel-melo');
+
     const btnStream = document.getElementById('btn-stream');
     const btnDownload = document.getElementById('btn-download');
     const btnFallback = document.getElementById('btn-fallback');
     const statusText = document.getElementById('status-text');
+    const activeModelText = document.getElementById('active-model-text');
     const metricTtfa = document.getElementById('metric-ttfa');
     const metricChunks = document.getElementById('metric-chunks');
     const audioPlayer = document.getElementById('audio-player');
@@ -144,6 +223,61 @@
     const debugConsole = document.getElementById('debug-console');
     const btnClearLogs = document.getElementById('btn-clear-logs');
     const pbTokenInput = document.getElementById('pb-token');
+
+    let currentEngine = 'piper'; // 'piper' | 'kokoro' | 'melotts'
+
+    // Tab Switching Logic
+    function switchTab(engine) {
+      currentEngine = engine;
+      [tabPiper, tabKokoro, tabMelo].forEach(t => t.classList.remove('active', 'text-slate-400'));
+      [panelPiper, panelKokoro, panelMelo].forEach(p => p.classList.add('hidden'));
+
+      if (engine === 'piper') {
+        tabPiper.classList.add('active');
+        panelPiper.classList.remove('hidden');
+        activeModelText.textContent = 'piper (v1)';
+        log('info', 'Pestaña activa cambiada a Piper TTS');
+      } else if (engine === 'kokoro') {
+        tabKokoro.classList.add('active');
+        panelKokoro.classList.remove('hidden');
+        activeModelText.textContent = 'kokoro (v1)';
+        log('info', 'Pestaña activa cambiada a Kokoro-82M');
+      } else if (engine === 'melotts') {
+        tabMelo.classList.add('active');
+        panelMelo.classList.remove('hidden');
+        activeModelText.textContent = 'melotts (v1)';
+        log('info', 'Pestaña activa cambiada a MeloTTS');
+      }
+    }
+
+    tabPiper.addEventListener('click', () => switchTab('piper'));
+    tabKokoro.addEventListener('click', () => switchTab('kokoro'));
+    tabMelo.addEventListener('click', () => switchTab('melotts'));
+
+    // Get Active Request Parameters
+    function getActiveParams() {
+      const speed = parseFloat(speedRange.value);
+      const format = document.getElementById('format-select').value;
+      const text = document.getElementById('tts-text').value.trim();
+      const rawToken = pbTokenInput.value.trim();
+
+      let model = currentEngine;
+      let version = 'v1';
+      let voice = 'es_MX-ald-medium';
+
+      if (currentEngine === 'piper') {
+        voice = document.getElementById('piper-voice').value;
+        version = document.getElementById('piper-version').value;
+      } else if (currentEngine === 'kokoro') {
+        voice = document.getElementById('kokoro-voice').value;
+        version = document.getElementById('kokoro-version').value;
+      } else if (currentEngine === 'melotts') {
+        voice = document.getElementById('melo-voice').value;
+        version = document.getElementById('melo-version').value;
+      }
+
+      return { rawToken, text, model, version, voice, speed, format };
+    }
 
     // Restore token from localStorage on load
     const savedToken = localStorage.getItem('pb_token');
@@ -218,13 +352,7 @@
     // Stream Playback
     btnStream.addEventListener('click', async () => {
       clearError();
-      const rawToken = document.getElementById('pb-token').value.trim();
-      const text = document.getElementById('tts-text').value.trim();
-      const model = document.getElementById('model-select').value;
-      const version = document.getElementById('version-select').value;
-      const voice = document.getElementById('voice-select').value;
-      const speed = parseFloat(speedRange.value);
-      const format = document.getElementById('format-select').value;
+      const { rawToken, text, model, version, voice, speed, format } = getActiveParams();
 
       if (!text) return showError('Ingresa un texto para sintetizar.');
 
@@ -249,12 +377,11 @@
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout (allows voice model download on first cold start)
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-        // Warn user after 5s that the model might be loading for the first time
         const slowWarningId = setTimeout(() => {
-          statusText.textContent = 'Sintetizando... (primer inicio: descargando modelo de voz, puede tardar ~15s)';
-          log('warn', 'El servidor está tardando más de lo normal. Si es el primer inicio, el modelo de voz se está descargando de HuggingFace.');
+          statusText.textContent = 'Sintetizando... (primer inicio: cargando modelo, puede tardar unos segundos)';
+          log('warn', 'El servidor está sintetizando el modelo por primera vez...');
         }, 5000);
 
         const res = await fetch('/v1/tts/stream', {
@@ -278,8 +405,8 @@
         if (res.status === 503 || res.status === 504 || res.status === 502) {
           const errBody = await res.json().catch(() => ({}));
           throw {
-            message: `HTTP ${res.status}: ${errBody.error || 'Servidor de autenticación o Piper inalcanzable.'}`,
-            hint: 'Verifica la variable POCKETBASE_URL en Easypanel o que el contenedor de Piper esté listo.'
+            message: `HTTP ${res.status}: ${errBody.error || 'Servidor inalcanzable.'}`,
+            hint: 'Verifica los logs del contenedor en Easypanel.'
           };
         }
 
@@ -312,7 +439,7 @@
         if (chunks.length === 0) {
           throw {
             message: 'Se recibieron 0 fragmentos de audio del servidor.',
-            hint: 'El servidor de síntesis no pudo generar ningún bloque de audio. Revisa los logs del contenedor en Easypanel o utiliza el botón de Fallback a continuación.'
+            hint: 'El servidor de síntesis no pudo generar ningún bloque de audio.'
           };
         }
 
@@ -325,7 +452,7 @@
 
       } catch (err) {
         if (err.name === 'AbortError') {
-          showError('Tiempo de espera agotado (90s timeout)', 'El servidor tardó demasiado. Si es el primer inicio, el modelo de voz puede estar descargándose. Espera 30 segundos e intenta de nuevo.');
+          showError('Tiempo de espera agotado (90s timeout)', 'El servidor tardó demasiado en responder.');
         } else {
           showError(err.message || err, err.hint || '');
         }
@@ -338,19 +465,13 @@
     // Download Implementation
     btnDownload.addEventListener('click', async () => {
       clearError();
-      const rawToken = document.getElementById('pb-token').value.trim();
-      const text = document.getElementById('tts-text').value.trim();
-      const model = document.getElementById('model-select').value;
-      const version = document.getElementById('version-select').value;
-      const voice = document.getElementById('voice-select').value;
-      const speed = parseFloat(speedRange.value);
-      const format = document.getElementById('format-select').value;
+      const { rawToken, text, model, version, voice, speed, format } = getActiveParams();
 
       if (!text) return showError('Ingresa un texto para sintetizar.');
 
       btnDownload.disabled = true;
       statusText.textContent = 'Generando descarga de audio completo...';
-      log('info', `Solicitando POST /v1/tts/synthesize...`);
+      log('info', `Solicitando POST /v1/tts/synthesize (${model})...`);
 
       try {
         const headers = { 'Content-Type': 'application/json' };
@@ -376,10 +497,10 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `audio.${format}`;
+        a.download = `audio_${model}.${format}`;
         a.click();
         URL.revokeObjectURL(url);
-        log('success', `Archivo descargado correctamente (audio.${format}, ${blob.size} bytes)`);
+        log('success', `Archivo descargado correctamente (${blob.size} bytes)`);
         statusText.textContent = 'Descarga completada con éxito.';
       } catch (err) {
         showError(err.message || 'Error al descargar el archivo de audio.');
@@ -389,9 +510,9 @@
       }
     });
 
-    // Fallback: Web Speech API Browser Native Synthesis
+    // Fallback: Web Speech API
     btnFallback.addEventListener('click', () => {
-      const text = document.getElementById('tts-text').value.trim();
+      const { text, speed } = getActiveParams();
       if (!text) return;
 
       if (!('speechSynthesis' in window)) {
@@ -400,22 +521,21 @@
       }
 
       log('warn', 'Iniciando reproducción de respaldo mediante Web Speech API del navegador...');
-      statusText.textContent = 'Reproduciendo vía Web Speech API (Fallback)...';
-
-      window.speechSynthesis.cancel(); // stop previous speech
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'es-MX';
-      utterance.rate = parseFloat(speedRange.value) || 1.0;
+      utterance.rate = speed;
 
       utterance.onstart = () => {
-        log('success', 'Web Speech API: Reproduciendo voz nativa del navegador.');
+        statusText.textContent = 'Reproduciendo audio de respaldo (Navegador)...';
+        log('info', 'Web Speech API comenzó la lectura');
       };
       utterance.onend = () => {
-        log('info', 'Web Speech API: Reproducción finalizada.');
-        statusText.textContent = 'Reproducción fallback finalizada.';
+        statusText.textContent = 'Reproducción de respaldo finalizada.';
+        log('success', 'Web Speech API finalizó con éxito');
       };
       utterance.onerror = (e) => {
-        log('error', `Web Speech API error: ${e.error}`);
+        showError(`Error en Web Speech API: ${e.error}`);
       };
 
       window.speechSynthesis.speak(utterance);

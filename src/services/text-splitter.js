@@ -1,4 +1,33 @@
 /**
+ * Splits a text fragment that exceeds target limit by space boundaries (words)
+ * without cutting words in half.
+ *
+ * @param {string} str - Input text fragment.
+ * @param {number} limit - Maximum character limit.
+ * @returns {string[]} Word-aligned text chunks.
+ */
+function splitByWordBoundaries(str, limit) {
+  const chunks = [];
+  let remaining = str.trim();
+
+  while (remaining.length > limit) {
+    let cutIndex = remaining.lastIndexOf(' ', limit);
+    if (cutIndex <= 0) {
+      cutIndex = limit; // Fallback for single continuous token exceeding limit
+    }
+    const head = remaining.slice(0, cutIndex).trim();
+    if (head) chunks.push(head);
+    remaining = remaining.slice(cutIndex).trim();
+  }
+
+  if (remaining) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+}
+
+/**
  * Smart sentence splitter for TTS streaming.
  * Splits text into phonetic sentences/phrases without breaking words.
  *
@@ -11,41 +40,48 @@ export function splitTextIntoSentences(text, maxChars = 220) {
 
   // Normalize line breaks and spaces
   const cleanText = text.replace(/\r\n/g, '\n').trim();
+  if (!cleanText) return [];
 
   // Match sentences based on punctuation (. ? ! : \n)
   const rawSentences = cleanText.match(/[^.!?:\n]+[.!?:\n]+|[^.!?:\n]+$/g) || [cleanText];
-  const result = [];
-  let buffer = '';
+  const units = [];
 
   for (const sentence of rawSentences) {
     const trimmed = sentence.trim();
     if (!trimmed) continue;
 
-    // If single sentence fragment is longer than maxChars, break it down further by commas/semicolons
-    if (trimmed.length > maxChars) {
-      if (buffer) {
-        result.push(buffer);
-        buffer = '';
-      }
+    if (trimmed.length <= maxChars) {
+      units.push(trimmed);
+    } else {
+      // Split by commas/semicolons
       const subPhrases = trimmed.match(/[^,;\n]+[,;\n]+|[^,;\n]+$/g) || [trimmed];
       for (const phrase of subPhrases) {
         const subTrimmed = phrase.trim();
         if (!subTrimmed) continue;
 
-        if ((buffer + ' ' + subTrimmed).trim().length <= maxChars) {
-          buffer = (buffer + ' ' + subTrimmed).trim();
+        if (subTrimmed.length <= maxChars) {
+          units.push(subTrimmed);
         } else {
-          if (buffer) result.push(buffer);
-          buffer = subTrimmed;
+          // Fallback: split by space boundaries so words are never cut in half
+          const wordUnits = splitByWordBoundaries(subTrimmed, maxChars);
+          units.push(...wordUnits);
         }
       }
+    }
+  }
+
+  // Combine small consecutive units into buffer up to maxChars
+  const result = [];
+  let buffer = '';
+
+  for (const unit of units) {
+    if (!buffer) {
+      buffer = unit;
+    } else if ((buffer + ' ' + unit).length <= maxChars) {
+      buffer += ' ' + unit;
     } else {
-      if ((buffer + ' ' + trimmed).trim().length <= maxChars) {
-        buffer = (buffer + ' ' + trimmed).trim();
-      } else {
-        if (buffer) result.push(buffer);
-        buffer = trimmed;
-      }
+      result.push(buffer);
+      buffer = unit;
     }
   }
 

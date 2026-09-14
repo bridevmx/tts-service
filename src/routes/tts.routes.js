@@ -12,7 +12,14 @@ const router = Router();
  * Splits text into sentences and streams audio chunks as soon as they are ready.
  */
 router.post('/stream', requirePocketbaseAuth, async (req, res) => {
-  const { text, voice = config.defaultVoice, speed = 1.0, format = 'mp3' } = req.body || {};
+  const {
+    text,
+    voice = config.defaultVoice,
+    model = 'piper',
+    version = 'v1',
+    speed = 1.0,
+    format = 'mp3'
+  } = req.body || {};
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'El campo "text" es obligatorio.' });
@@ -26,7 +33,7 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
   const mimeType = requestedFormat === 'wav' ? 'audio/wav' : 'audio/mpeg';
 
   const sentences = splitTextIntoSentences(text, 220);
-  console.log(`[TTS Route Debug] Stream request started. Text length: ${text.length}, Sentences count: ${sentences.length}, Voice: ${voice}`);
+  console.log(`[TTS Route Debug] Stream request started. Text length: ${text.length}, Sentences: ${sentences.length}, Model: ${model}, Version: ${version}, Voice: ${voice}`);
 
   const startTime = Date.now();
   let chunkIndex = 0;
@@ -42,7 +49,7 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
       chunkIndex++;
       const chunkStart = Date.now();
       try {
-        let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat);
+        let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat, model, version);
         let fromCache = false;
 
         if (audioBuffer) {
@@ -51,10 +58,12 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
           audioBuffer = await synthesizeSentence({
             text: sentence,
             voice,
+            model,
+            version,
             speed,
             format: requestedFormat
           });
-          audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer);
+          audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer, model, version);
         }
 
         const chunkDuration = Date.now() - chunkStart;
@@ -105,7 +114,14 @@ router.post('/stream', requirePocketbaseAuth, async (req, res) => {
  * Synthesizes full text and returns binary file attachment.
  */
 router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
-  const { text, voice = config.defaultVoice, speed = 1.0, format = 'mp3' } = req.body || {};
+  const {
+    text,
+    voice = config.defaultVoice,
+    model = 'piper',
+    version = 'v1',
+    speed = 1.0,
+    format = 'mp3'
+  } = req.body || {};
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'El campo "text" es obligatorio.' });
@@ -120,20 +136,22 @@ router.post('/synthesize', requirePocketbaseAuth, async (req, res) => {
   const mimeType = requestedFormat === 'wav' ? 'audio/wav' : 'audio/mpeg';
 
   const sentences = splitTextIntoSentences(text, 220);
-  console.log(`[TTS Route Debug] Block synthesize request started. Sentences count: ${sentences.length}`);
+  console.log(`[TTS Route Debug] Block synthesize request started. Sentences count: ${sentences.length}, Model: ${model}, Version: ${version}`);
 
   try {
     const buffers = [];
     for (const sentence of sentences) {
-      let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat);
+      let audioBuffer = audioCache.get(sentence, voice, speed, requestedFormat, model, version);
       if (!audioBuffer) {
         audioBuffer = await synthesizeSentence({
           text: sentence,
           voice,
+          model,
+          version,
           speed,
           format: requestedFormat
         });
-        audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer);
+        audioCache.set(sentence, voice, speed, requestedFormat, audioBuffer, model, version);
       }
       buffers.push(audioBuffer);
     }

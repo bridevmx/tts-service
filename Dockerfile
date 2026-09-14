@@ -23,8 +23,8 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
-# Install Piper TTS engine and Flask server dependencies
-RUN pip install --no-cache-dir piper-tts flask
+# Install Piper TTS, Kokoro-ONNX and Flask server dependencies
+RUN pip install --no-cache-dir piper-tts flask kokoro-onnx soundfile
 
 # Copy Piper engine server code
 COPY piper-server/ /app/piper-server/

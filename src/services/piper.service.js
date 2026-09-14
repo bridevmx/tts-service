@@ -1,26 +1,36 @@
 import { config } from '../config.js';
 
 /**
- * Synthesizes a single text sentence into audio buffer using Piper engine.
+ * Synthesizes a single text sentence into audio buffer using internal TTS engine.
  *
  * @param {Object} params
  * @param {string} params.text - Sentence text to synthesize.
  * @param {string} [params.voice] - Voice ID.
+ * @param {string} [params.model] - Model engine ('piper', 'kokoro', 'melotts', 'tts-1', 'tts-1-hd').
+ * @param {string} [params.version] - Model version ('v1', 'latest').
  * @param {number} [params.speed] - Speech speed multiplier.
  * @param {string} [params.format] - Audio format ('mp3' or 'wav').
  * @returns {Promise<Buffer>} Audio binary buffer.
  */
-export async function synthesizeSentence({ text, voice = config.defaultVoice, speed = 1.0, format = 'mp3' }) {
+export async function synthesizeSentence({
+  text,
+  voice = config.defaultVoice,
+  model = 'piper',
+  version = 'v1',
+  speed = 1.0,
+  format = 'mp3'
+}) {
   const payload = {
     input: text,
-    model: voice,
+    model: model || 'piper',
+    version: version || 'v1',
     voice: voice,
     speed: parseFloat(speed) || 1.0,
     response_format: format
   };
 
   const startTime = Date.now();
-  console.log(`[Piper Service Debug] Sending request to Piper (${config.piperUrl}) - Voice: ${voice}, Format: ${format}, Text length: ${text.length}`);
+  console.log(`[TTS Service Debug] Sending request to TTS engine (${config.piperUrl}) - Model: ${model}, Version: ${version}, Voice: ${voice}, Format: ${format}, Text length: ${text.length}`);
 
   try {
     const response = await fetch(config.piperUrl, {

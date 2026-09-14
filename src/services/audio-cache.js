@@ -11,16 +11,16 @@ class AudioCacheService {
   /**
    * Generates a unique SHA-256 hash key for a sentence synthesis request.
    */
-  generateKey(text, voice = 'es_MX-ald-medium', speed = 1.0, format = 'mp3') {
-    const raw = `${text.trim()}|${voice}|${speed}|${format.toLowerCase()}`;
+  generateKey(text, voice = 'es_MX-ald-medium', speed = 1.0, format = 'mp3', model = 'piper', version = 'v1') {
+    const raw = `${text.trim()}|${model}|${version}|${voice}|${speed}|${format.toLowerCase()}`;
     return crypto.createHash('sha256').update(raw).digest('hex');
   }
 
   /**
    * Retrieves audio buffer from cache if present.
    */
-  get(text, voice, speed, format) {
-    const key = this.generateKey(text, voice, speed, format);
+  get(text, voice, speed, format, model = 'piper', version = 'v1') {
+    const key = this.generateKey(text, voice, speed, format, model, version);
     if (this.cache.has(key)) {
       this.hits++;
       const item = this.cache.get(key);
@@ -36,9 +36,9 @@ class AudioCacheService {
   /**
    * Stores audio buffer in cache. Evicts oldest item if maxSize reached.
    */
-  set(text, voice, speed, format, buffer) {
+  set(text, voice, speed, format, buffer, model = 'piper', version = 'v1') {
     if (!buffer || !Buffer.isBuffer(buffer)) return;
-    const key = this.generateKey(text, voice, speed, format);
+    const key = this.generateKey(text, voice, speed, format, model, version);
 
     if (this.cache.has(key)) {
       this.cache.delete(key);

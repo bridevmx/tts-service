@@ -7,7 +7,7 @@ nixPkgs = ["nodejs-20_x", "python311", "python311Packages.pip", "ffmpeg", "libgo
 cmds = [
   "npm ci --only=production",
   "python3 -m venv /opt/venv",
-  "/opt/venv/bin/pip install --no-cache-dir piper-tts flask",
+  "/opt/venv/bin/pip install --no-cache-dir piper-tts flask kokoro-onnx soundfile",
   "mkdir -p /app/prebundled_voices",
   "curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx 'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx'",
   "curl -L -o /app/prebundled_voices/es_MX-ald-medium.onnx.json 'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_MX/ald/medium/es_MX-ald-medium.onnx.json'"
